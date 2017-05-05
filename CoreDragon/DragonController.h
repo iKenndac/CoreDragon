@@ -78,7 +78,7 @@ NS_ASSUME_NONNULL_BEGIN
 	Dragging was just initiated from `draggable`. Put the object(s) to be dragged onto
 	the pasteboard in `drag`. Not doing so will cancel the drag.
 */
-- (void)beginDragOperation:(id<DragonInfo>)drag fromView:(UIView*)draggable;
+- (void)beginDragOperation:(id<DragonInfo>)drag fromPoint:(CGPoint)point inView:(UIView*)draggable;
 @end
 
 @protocol DragonDropDelegate <NSObject>

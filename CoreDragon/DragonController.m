@@ -261,7 +261,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	state.pasteboard = [UIPasteboard generalPasteboard];
 	state.originalPasteboardContents = state.pasteboard.items;
 	state.pasteboard.items = @[];
-	[delegate beginDragOperation:state fromView:state.dragView];
+	[delegate beginDragOperation:state fromPoint:[grec locationInView:state.dragView] inView:state.dragView];
 	if(state.pasteboard.items.count == 0) {
 		NSLog(@"%@: Cancelling drag operation because no item was put on pasteboard", [self class]);
 		state.pasteboard.items = state.originalPasteboardContents;
