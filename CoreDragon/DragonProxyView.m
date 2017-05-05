@@ -51,28 +51,31 @@
     _iconContainer.layer.shadowOffset = CGSizeMake(0, 3);
     [_iconContainer addSubview:_icon];
     [self addSubview:_iconContainer];
-    
-    _titleContainer = [[UIView alloc] initWithFrame:CGRectMake(iconSize.width + margin, iconSize.height/2. - labelSize.height/2. - textContainerYMargin, labelSize.width + textContainerXMargin*2, labelSize.height + textContainerYMargin*2)];
-    _titleContainer.layer.shadowOpacity = .5;
-    _titleContainer.layer.shadowOffset = CGSizeMake(0, 3);
-    _titleContainer.layer.cornerRadius = labelCornerRadius;
-    _titleContainer.backgroundColor = [UIColor colorWithRed:0.268 green:0.314 blue:0.792 alpha:1.000];
-    
-    _titleLabel = [[UILabel alloc] initWithFrame:(CGRect){.size=labelSize, .origin = {textContainerXMargin,textContainerYMargin}}];
-    _titleLabel.text = title;
-    _titleLabel.font = titleFont;
-    _titleLabel.textColor = [UIColor colorWithRed:0.946 green:0.951 blue:0.946 alpha:1.000];
-    _titleLabel.backgroundColor = [UIColor clearColor];
-    [_titleContainer addSubview:_titleLabel];
-    [self addSubview:_titleContainer];
+
+    if (title != nil && title.length > 0) {
+        _titleContainer = [[UIView alloc] initWithFrame:CGRectMake(iconSize.width + margin, iconSize.height/2. - labelSize.height/2. - textContainerYMargin, labelSize.width + textContainerXMargin*2, labelSize.height + textContainerYMargin*2)];
+        _titleContainer.layer.shadowOpacity = .5;
+        _titleContainer.layer.shadowOffset = CGSizeMake(0, 3);
+        _titleContainer.layer.cornerRadius = labelCornerRadius;
+        _titleContainer.backgroundColor = [UIColor colorWithRed:0.268 green:0.314 blue:0.792 alpha:1.000];
+
+        _titleLabel = [[UILabel alloc] initWithFrame:(CGRect){.size=labelSize, .origin = {textContainerXMargin,textContainerYMargin}}];
+        _titleLabel.text = title;
+        _titleLabel.font = titleFont;
+        _titleLabel.textColor = [UIColor colorWithRed:0.946 green:0.951 blue:0.946 alpha:1.000];
+        _titleLabel.backgroundColor = [UIColor clearColor];
+        [_titleContainer addSubview:_titleLabel];
+        [self addSubview:_titleContainer];
+    }
     
     _actionIcon = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"dragndrop-add"]];
     _actionIcon.frame = CGRectMake(70, 10, 20, 20);
     _actionIcon.layer.shadowOpacity = .5;
     _actionIcon.layer.shadowOffset = CGSizeMake(0, 3);
     [self addSubview:_actionIcon];
-    
-    self.frame = CGRectMake(0, 0, CGRectGetMaxX(_titleContainer.bounds), CGRectGetMaxY(_iconContainer.bounds));
+
+    UIView *farRightView = _titleContainer == nil ? _iconContainer : _titleContainer;
+    self.frame = CGRectMake(0, 0, CGRectGetMaxX(farRightView.bounds), CGRectGetMaxY(_iconContainer.bounds));
     
     self.layer.anchorPoint = CGPointMake(45./CGRectGetMaxX(self.frame), 0.8);
     
