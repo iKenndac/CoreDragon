@@ -60,6 +60,9 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol DragonInfo <NSObject>
 @property(nonatomic,readonly) UIPasteboard *pasteboard;
 
+/// Optional drag context. Not given to other apps — only used within the local app.
+@property(nonatomic, readwrite, weak) id localContext;
+
 // Can only be set during 'beingDragOperation:fromView:'
 /*! An icon to represent the data you just put in pasteboard. If not set, the
 	drag will be represented by a screenshot of the dragged view. */

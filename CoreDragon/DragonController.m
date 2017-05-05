@@ -29,6 +29,7 @@ static const void *kDropTargetKey = &kDropTargetKey;
 @property(nonatomic,assign) CGPoint initialPositionInScreenSpace;
 @property(nonatomic,assign) NSString *operationIdentifier;
 @property(nonatomic,strong) SPDragSource *source;
+@property(nonatomic, weak) id localContext;
 
 // During-drag state
 @property(nonatomic,strong) NSArray<NSDictionary *> *originalPasteboardContents;
