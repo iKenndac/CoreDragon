@@ -186,7 +186,7 @@
 				05CBCC0A1C6B1210000CFD12 /* NSData+GZIP.m */,
 			);
 			name = GZIP;
-			path = ../../../../MeshPipe/Libraries/GZIP/GZIP;
+			path = ../Libraries/GZIP/GZIP;
 			sourceTree = "<group>";
 		};
 		05CBCC0C1C6B1227000CFD12 /* GCDAsyncSocket */ = {
@@ -196,7 +196,7 @@
 				05CBCC111C6B1227000CFD12 /* GCDAsyncUdpSocket.m */,
 			);
 			name = GCDAsyncSocket;
-			path = ../../../../MeshPipe/Libraries/CocoaAsyncSocket/Source/GCD;
+			path = ../Libraries/CocoaAsyncSocket/Source/GCD;
 			sourceTree = "<group>";
 		};
 		05EDCE1618E9F03D003CF165 = {
