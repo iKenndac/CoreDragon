@@ -7,15 +7,14 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "DragonController.h"
 
-@protocol DragonProxyView <NSObject>
-- (void)animateOut:(dispatch_block_t)completion forSuccess:(BOOL)wasSuccessful;
-@end
-
+/// A simple premade proxy view that shows an icon, and optionally a title.
 @interface DragonProxyView : UIView <DragonProxyView>
 - (instancetype)initWithIcon:(UIImage*)icon title:(NSString*)title subtitle:(NSString*)subtitle;
 @end
 
+// The fallback proxy view that just displays a view snapshot.
 @interface DragonScreenshotProxyView : UIImageView <DragonProxyView>
 - (instancetype)initWithScreenshot:(UIImage *)screenshot;
 @end

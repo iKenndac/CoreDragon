@@ -34,7 +34,7 @@ static const void *kDropTargetKey = &kDropTargetKey;
 // During-drag state
 @property(nonatomic,strong) NSArray<NSDictionary *> *originalPasteboardContents;
 @property(nonatomic,strong) UIView *dragView; // the thing that was long-pressed
-@property(nonatomic,strong) UIView<DragonProxyView> *proxyView; // thing under finger
+@property(nonatomic,strong) UIView<DragonProxyView> *localProxyView; // thing under finger
 @property(nonatomic,strong) NSArray<SPDropTarget *> *activeDropTargets;
 @property(nonatomic,strong) NSTimer *springloadingTimer;
 @property(nonatomic,strong) NSTimer *conclusionTimeoutTimer;
@@ -377,26 +377,31 @@ static UIImage *unserializedImage(NSDictionary *rep)
 - (void)startDraggingWithState:(SPDraggingState*)state anchorPoint:(CGPoint)anchorPoint initialPosition:(CGPoint)position
 {
 	self.state = state;
+    BOOL hasCustomDraggingView = state.localProxyView != nil;
 	
-    if(state.draggingIcon || !state.screenshot) {
-        state.proxyView = [[DragonProxyView alloc] initWithIcon:state.draggingIcon title:state.title subtitle:state.subtitle];
-    } else {
-        state.proxyView = [[DragonScreenshotProxyView alloc] initWithScreenshot:state.screenshot];
+    if(!hasCustomDraggingView && (state.draggingIcon || !state.screenshot)) {
+        state.localProxyView = [[DragonProxyView alloc] initWithIcon:state.draggingIcon title:state.title subtitle:state.subtitle];
+    } else if (!hasCustomDraggingView) {
+        state.localProxyView = [[DragonScreenshotProxyView alloc] initWithScreenshot:state.screenshot];
     }
-	
 
-    state.proxyView.alpha = 0;
-    [UIView animateWithDuration:.2 animations:^{
-        state.proxyView.alpha = state.draggingIcon ? 1 : 0.5;
-		state.dragView.alpha = 0;
-    }];
-    [_draggingContainer addSubview:state.proxyView];
-    
-    if(!state.draggingIcon) { // it's just a screenshot, position it correctly
-        state.proxyView.layer.anchorPoint = anchorPoint;
+    [state.localProxyView prepareForDragOperation:state];
+
+    [_draggingContainer addSubview:state.localProxyView];
+
+    if(!hasCustomDraggingView && !state.draggingIcon) { // it's just a screenshot, position it correctly
+        state.localProxyView.layer.anchorPoint = anchorPoint;
     }
-    state.proxyView.layer.position = position;
-    
+    state.localProxyView.layer.position = position;
+
+    [state.localProxyView animateInWithSuggestedDuration:.2 completion:^{
+        // TODO: At the moment, this is a no-op. Maybe construct a snapshot to pass to the other application??
+    }];
+
+    [UIView animateWithDuration:.2 animations:^{
+        state.dragView.alpha = 0;
+    }];
+
     [self recalculateActiveDropTargets];
 	
 	[[NSNotificationCenter defaultCenter] postNotificationName:DragonDragOperationStartedNotificationName object:self];
@@ -423,7 +428,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 
 - (void)_continueDragging:(CGPoint)position
 {
-    _state.proxyView.layer.position = position;
+    _state.localProxyView.layer.position = position;
     
     SPDropTarget *previousTarget = _state.hoveringTarget;
     _state.hoveringTarget = [self targetUnderFinger];
@@ -442,8 +447,8 @@ static UIImage *unserializedImage(NSDictionary *rep)
     }
     
     if([_state.hoveringTarget.delegate respondsToSelector:@selector(dropTarget:updateHighlight:forDrag:atPoint:)]) {
-        CGPoint locationInWindow = _state.proxyView.layer.position;
-        CGPoint p = [_state.hoveringTarget.view convertPoint:locationInWindow fromView:_state.proxyView.superview];
+        CGPoint locationInWindow = _state.localProxyView.layer.position;
+        CGPoint p = [_state.hoveringTarget.view convertPoint:locationInWindow fromView:_state.localProxyView.superview];
 
         [_state.hoveringTarget.delegate dropTarget:_state.hoveringTarget.view updateHighlight:_state.hoveringTarget.highlight forDrag:_state atPoint:p];
     }
@@ -490,30 +495,21 @@ static UIImage *unserializedImage(NSDictionary *rep)
         return;
     }
     
-    CGPoint locationInWindow = _state.proxyView.layer.position;
-    CGPoint p = [targetThatWasHit.view convertPoint:locationInWindow fromView:_state.proxyView.superview];
+    CGPoint locationInWindow = _state.localProxyView.layer.position;
+    CGPoint p = [targetThatWasHit.view convertPoint:locationInWindow fromView:_state.localProxyView.superview];
     [targetThatWasHit.delegate dropTarget:targetThatWasHit.view acceptDrag:_state atPoint:p];
     
     __block int count = 0;
     dispatch_block_t completion = ^{
-        if(++count == 3) {
+        if(++count == 2) {
             if ([_state.source.delegate respondsToSelector:@selector(dragOperationDidComplete:)]) {
                 [_state.source.delegate dragOperationDidComplete:_state];
             }
             [self cleanUpDragging];
         }
     };
-	[_state.proxyView animateOut:completion forSuccess:YES];
+    [_state.localProxyView animateOutForSuccess:YES suggestedDuration:0.5 completion:completion];
     [targetThatWasHit.highlight animateAcceptedDropWithCompletion:completion];
-	[UIView animateKeyframesWithDuration:.5 delay:0 options:UIViewKeyframeAnimationOptionCalculationModeCubicPaced animations:^{
-		[UIView addKeyframeWithRelativeStartTime:0 relativeDuration:.3 animations:^{
-			_state.proxyView.transform = CGAffineTransformMakeScale(1.2, 1.2);
-		}];
-		[UIView addKeyframeWithRelativeStartTime:.3 relativeDuration:.7 animations:^{
-			_state.proxyView.transform = CGAffineTransformMakeScale(0.001, 0.001);
-			_state.proxyView.alpha = 0;
-		}];
-	} completion:(id)completion];
 }
 
 #pragma mark Cancel dragging
@@ -534,7 +530,6 @@ static UIImage *unserializedImage(NSDictionary *rep)
 {
 	[_state.conclusionTimeoutTimer invalidate];
     [self stopHighlightingDropTargets];
-	[_state.proxyView animateOut:nil forSuccess:NO];
 
     BOOL shouldSnapBackProxyView = YES;
     if ([_state.source.delegate respondsToSelector:@selector(shouldSnapBackCancelledDragOperation:)]) {
@@ -543,9 +538,10 @@ static UIImage *unserializedImage(NSDictionary *rep)
 
     dispatch_block_t completeAnimation = ^{
         [UIView animateWithDuration:.2 animations:^{
-            _state.proxyView.alpha = 0;
             _state.dragView.alpha = 1;
-        } completion:^(BOOL finished) {
+        }];
+
+        [_state.localProxyView animateOutForSuccess:NO suggestedDuration:0.2 completion:^{
             if ([_state.source.delegate respondsToSelector:@selector(dragOperationDidCancel:)]) {
                 [_state.source.delegate dragOperationDidCancel:_state];
             }
@@ -557,7 +553,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
         completeAnimation();
     } else {
         [UIView animateWithDuration:.4 animations:^{
-            _state.proxyView.layer.position = [self convertScreenPointToLocalSpace:_state.initialPositionInScreenSpace];
+            _state.localProxyView.layer.position = [self convertScreenPointToLocalSpace:_state.initialPositionInScreenSpace];
         } completion:^(BOOL finished) {
             completeAnimation();
         }];
@@ -597,7 +593,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	_state.conclusionTimeoutTimer = nil;
 	
     [_state.springloadingTimer invalidate];
-    [_state.proxyView removeFromSuperview];
+    [_state.localProxyView removeFromSuperview];
     [self stopHighlightingDropTargets];
 	
 	if(self.state.originalPasteboardContents)
@@ -682,8 +678,8 @@ static UIImage *unserializedImage(NSDictionary *rep)
 {
     SPDropTarget *springloadingTarget = _state.hoveringTarget;
     
-    CGPoint locationInWindow = _state.proxyView.layer.position;
-    CGPoint p = [springloadingTarget.view convertPoint:locationInWindow fromView:_state.proxyView.superview];
+    CGPoint locationInWindow = _state.localProxyView.layer.position;
+    CGPoint p = [springloadingTarget.view convertPoint:locationInWindow fromView:_state.localProxyView.superview];
     
     [springloadingTarget.highlight animateSpringloadWithCompletion:^{
         [springloadingTarget.delegate dropTarget:springloadingTarget.view springload:_state atPoint:p];
@@ -710,8 +706,8 @@ static UIImage *unserializedImage(NSDictionary *rep)
 - (SPDropTarget*)targetUnderFinger
 {
 	for(UIWindow *window in [UIApplication sharedApplication].windows) {
-		CGPoint locationInDragContainer = _state.proxyView.layer.position;
-		CGPoint locationInWindow = [window convertPoint:locationInDragContainer fromWindow:_state.proxyView.window];
+		CGPoint locationInDragContainer = _state.localProxyView.layer.position;
+		CGPoint locationInWindow = [window convertPoint:locationInDragContainer fromWindow:_state.localProxyView.window];
 		
 		UIView *view = [window hitTest:locationInWindow withEvent:nil];
 		SPDropTarget *target = nil;
@@ -737,7 +733,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 
 - (BOOL)_draggingIsWithinMyApp
 {
-	CGPoint locationInDragContainer = _state.proxyView.layer.position;
+	CGPoint locationInDragContainer = _state.localProxyView.layer.position;
 	CGPoint locationInScreenSpace = [self convertLocalPointToScreenSpace:locationInDragContainer];
 
 	BOOL isWithinApp = CGRectContainsPoint([self localFrameInScreenSpace], locationInScreenSpace);

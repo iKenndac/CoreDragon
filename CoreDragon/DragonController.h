@@ -1,5 +1,5 @@
 #import <UIKit/UIKit.h>
-@protocol DragonDelegate, DragonDropDelegate;
+@protocol DragonDelegate, DragonDropDelegate, DragonProxyView;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -64,16 +64,61 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readwrite, weak) id localContext;
 
 // Can only be set during 'beingDragOperation:fromView:'
-/*! An icon to represent the data you just put in pasteboard. If not set, the
-	drag will be represented by a screenshot of the dragged view. */
+/*! An icon to represent the data you just put in pasteboard. If not set (and no localProxyView
+         is provided), the drag will be represented by a screenshot of the dragged view. */
 @property(nonatomic,strong,nullable) UIImage *draggingIcon;
 /*! If draggingIcon is set, you can optionally also set a title to be shown next
 	to the icon while dragging. */
 @property(nonatomic,copy,nullable) NSString *title;
 /*! And additionally, a subtitle can be displayed below the title. */
 @property(nonatomic,copy,nullable) NSString *subtitle;
+
+
+/**
+ If provided, this view will be used to represent the drag during the operation.
+ 
+ @note It's important to also set a draggingIcon image, as your custom view will
+ not make it over to the other application when dragging across the splitscreen divide 
+ on iPad. The draggingIcon and title etc will be used to construct a new image.
+ */
+@property(nonatomic,strong,nullable) UIView<DragonProxyView> *localProxyView;
 @end
 
+/// A view that's placed onscreen to show the contents of the drag during the drag operation.
+@protocol DragonProxyView <NSObject>
+
+/**
+ Called just before a drag operation will begin. 
+ 
+ @note The view is unlikely to have a superview at this point.
+
+ @param dragOperation The operation that's about to begin.
+ */
+- (void)prepareForDragOperation:(id<DragonInfo>)dragOperation;
+
+/**
+ Called when the view needs to animate in at the beginning of a drag. A simple example is a fade in.
+ 
+ @note This view will have a superview when this method is called, and the view's layer will be positioned such that
+ its anchor point is underneath the user's finger.
+
+ @note If you intend to animate your custom drag view in, it's important to set initial state in -prepareForDragOperation:. 
+ For instance, if you're going to fade in, set your view's alpha to 0 beforehand.
+
+ @param suggestedDuration A suggested animation duration.
+ @param completion A block to be called when the animation is complete.
+ */
+- (void)animateInWithSuggestedDuration:(NSTimeInterval)duration completion:(dispatch_block_t)completion;
+
+/**
+ Called when the view needs to animate out at the end of a drag. A simple example is a fade out.
+
+ @param dragWasSuccessful `YES` if the drag was successfully dropped, `NO` if the drag was cancelled.
+ @param suggestedDuration A suggested animation duration.
+ @param completion A block to be called when the animation is complete.
+ */
+- (void)animateOutForSuccess:(BOOL)dragWasSuccessful suggestedDuration:(NSTimeInterval)duration completion:(dispatch_block_t)completion;
+@end
 
 @protocol DragonDelegate <NSObject>
 @required

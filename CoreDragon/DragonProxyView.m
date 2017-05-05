@@ -76,22 +76,48 @@
 
     UIView *farRightView = _titleContainer == nil ? _iconContainer : _titleContainer;
     self.frame = CGRectMake(0, 0, CGRectGetMaxX(farRightView.bounds), CGRectGetMaxY(_iconContainer.bounds));
-    
     self.layer.anchorPoint = CGPointMake(45./CGRectGetMaxX(self.frame), 0.8);
     
     return self;
 }
 
-- (void)animateOut:(dispatch_block_t)completion forSuccess:(BOOL)wasSuccessful
+- (void)prepareForDragOperation:(id<DragonInfo>)dragOperation
 {
-	if(wasSuccessful) {
-		if(completion) completion();
-	} else {
-		[UIView animateWithDuration:.5 animations:^{
-			self.alpha = 0;
-		} completion:(id)completion];
-	}
+    self.alpha = 0.0;
 }
+
+- (void)animateInWithSuggestedDuration:(NSTimeInterval)duration completion:(dispatch_block_t)completion
+{
+    [UIView animateWithDuration:duration animations:^{
+        self.alpha = 1.0;
+    } completion:^(BOOL finished) {
+        completion();
+    }];
+}
+
+- (void)animateOutForSuccess:(BOOL)dragWasSuccessful suggestedDuration:(NSTimeInterval)duration completion:(dispatch_block_t)completion
+{
+    if (dragWasSuccessful) {
+        [UIView animateKeyframesWithDuration:duration delay:0 options:UIViewKeyframeAnimationOptionCalculationModeCubicPaced animations:^{
+            [UIView addKeyframeWithRelativeStartTime:0 relativeDuration:.3 animations:^{
+                self.transform = CGAffineTransformMakeScale(1.2, 1.2);
+            }];
+            [UIView addKeyframeWithRelativeStartTime:.3 relativeDuration:.7 animations:^{
+                self.transform = CGAffineTransformMakeScale(0.001, 0.001);
+                self.alpha = 0.0;
+            }];
+        } completion:^(BOOL finished) {
+            completion();
+        }];
+    } else {
+        [UIView animateWithDuration:duration animations:^{
+            self.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            completion();
+        }];
+    }
+}
+
 @end
 
 @implementation DragonScreenshotProxyView
@@ -106,16 +132,39 @@
 	
 	return self;
 }
-- (void)animateOut:(dispatch_block_t)completion forSuccess:(BOOL)wasSuccessful
+
+- (void)prepareForDragOperation:(id<DragonInfo>)dragOperation
+{
+    self.alpha = 0.0;
+}
+
+- (void)animateInWithSuggestedDuration:(NSTimeInterval)duration completion:(dispatch_block_t)completion
+{
+    [UIView animateWithDuration:duration animations:^{
+        self.alpha = 0.5;
+    } completion:^(BOOL finished) {
+        completion();
+    }];
+}
+
+- (void)animateOutForSuccess:(BOOL)dragWasSuccessful suggestedDuration:(NSTimeInterval)duration completion:(dispatch_block_t)completion
 {
 	[CATransaction begin];
 	[CATransaction setCompletionBlock:completion];
+    [CATransaction setAnimationDuration:duration];
 	CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"shadowRadius"];
 	animation.fromValue = @(self.layer.shadowRadius);
 	animation.toValue = @0;
 
 	self.layer.shadowRadius = 0;
-	[self.layer addAnimation:animation forKey:@"shadowRadius"];
+    [self.layer addAnimation:animation forKey:@"shadowRadius"];
 	[CATransaction commit];
+
+    [UIView animateWithDuration:duration animations:^{
+        self.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        completion();
+    }];
 }
+
 @end
