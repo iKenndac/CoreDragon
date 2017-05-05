@@ -79,6 +79,16 @@ NS_ASSUME_NONNULL_BEGIN
 	the pasteboard in `drag`. Not doing so will cancel the drag.
 */
 - (void)beginDragOperation:(id<DragonInfo>)drag fromPoint:(CGPoint)point inView:(UIView*)draggable;
+
+@optional
+
+/// Return `NO` to disable the "snap back" animation when a drag is cancelled.
+- (BOOL)shouldSnapBackCancelledDragOperation:(id<DragonInfo>)drag;
+
+/// Delegate methods for the source to react to cancelled and completed drags.
+- (void)dragOperationDidCancel:(id<DragonInfo>)drag;
+- (void)dragOperationDidComplete:(id<DragonInfo>)drag;
+
 @end
 
 @protocol DragonDropDelegate <NSObject>

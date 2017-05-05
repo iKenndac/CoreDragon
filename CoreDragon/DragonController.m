@@ -28,6 +28,7 @@ static const void *kDropTargetKey = &kDropTargetKey;
 @property(nonatomic,strong) UIPasteboard *pasteboard;
 @property(nonatomic,assign) CGPoint initialPositionInScreenSpace;
 @property(nonatomic,assign) NSString *operationIdentifier;
+@property(nonatomic,strong) SPDragSource *source;
 
 // During-drag state
 @property(nonatomic,strong) NSArray<NSDictionary *> *originalPasteboardContents;
@@ -254,6 +255,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
     id<DragonDelegate> delegate = source.delegate;
 
     SPDraggingState *state = [SPDraggingState new];
+    state.source = source;
     state.dragView = source.view;
 	state.operationIdentifier = [[NSUUID UUID] UUIDString];
 	
@@ -493,8 +495,12 @@ static UIImage *unserializedImage(NSDictionary *rep)
     
     __block int count = 0;
     dispatch_block_t completion = ^{
-        if(++count == 3)
+        if(++count == 3) {
+            if ([_state.source.delegate respondsToSelector:@selector(dragOperationDidComplete:)]) {
+                [_state.source.delegate dragOperationDidComplete:_state];
+            }
             [self cleanUpDragging];
+        }
     };
 	[_state.proxyView animateOut:completion forSuccess:YES];
     [targetThatWasHit.highlight animateAcceptedDropWithCompletion:completion];
@@ -528,16 +534,33 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	[_state.conclusionTimeoutTimer invalidate];
     [self stopHighlightingDropTargets];
 	[_state.proxyView animateOut:nil forSuccess:NO];
-    [UIView animateWithDuration:.4 animations:^{
-        _state.proxyView.layer.position = [self convertScreenPointToLocalSpace:_state.initialPositionInScreenSpace];
-    } completion:^(BOOL finished) {
-		[UIView animateWithDuration:.2 animations:^{
-			_state.proxyView.alpha = 0;
-			_state.dragView.alpha = 1;
-		} completion:^(BOOL finished) {
-			[self _cleanUpDragging];
-		}];
-    }];
+
+    BOOL shouldSnapBackProxyView = YES;
+    if ([_state.source.delegate respondsToSelector:@selector(shouldSnapBackCancelledDragOperation:)]) {
+        shouldSnapBackProxyView = [_state.source.delegate shouldSnapBackCancelledDragOperation:_state];
+    }
+
+    dispatch_block_t completeAnimation = ^{
+        [UIView animateWithDuration:.2 animations:^{
+            _state.proxyView.alpha = 0;
+            _state.dragView.alpha = 1;
+        } completion:^(BOOL finished) {
+            if ([_state.source.delegate respondsToSelector:@selector(dragOperationDidCancel:)]) {
+                [_state.source.delegate dragOperationDidCancel:_state];
+            }
+            [self _cleanUpDragging];
+        }];
+    };
+
+    if (!shouldSnapBackProxyView) {
+        completeAnimation();
+    } else {
+        [UIView animateWithDuration:.4 animations:^{
+            _state.proxyView.layer.position = [self convertScreenPointToLocalSpace:_state.initialPositionInScreenSpace];
+        } completion:^(BOOL finished) {
+            completeAnimation();
+        }];
+    }
 }
 
 - (void)_waitForDraggingTimeout
