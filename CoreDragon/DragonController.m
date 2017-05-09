@@ -261,7 +261,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	state.operationIdentifier = [[NSUUID UUID] UUIDString];
 	
 	// Setup pasteboard contents
-	state.pasteboard = [UIPasteboard generalPasteboard];
+	state.pasteboard = [UIPasteboard pasteboardWithUniqueName];
 	state.originalPasteboardContents = state.pasteboard.items;
 	state.pasteboard.items = @[];
 	[delegate beginDragOperation:state fromPoint:[grec locationInView:state.dragView] inView:state.dragView];
@@ -495,13 +495,13 @@ static UIImage *unserializedImage(NSDictionary *rep)
         return;
     }
     
-    CGPoint locationInWindow = _state.localProxyView.layer.position;
-    CGPoint p = [targetThatWasHit.view convertPoint:locationInWindow fromView:_state.localProxyView.superview];
-    [targetThatWasHit.delegate dropTarget:targetThatWasHit.view acceptDrag:_state atPoint:p];
-    
     __block int count = 0;
     dispatch_block_t completion = ^{
         if(++count == 2) {
+            CGPoint locationInWindow = _state.localProxyView.layer.position;
+            CGPoint p = [targetThatWasHit.view convertPoint:locationInWindow fromView:_state.localProxyView.superview];
+            [targetThatWasHit.delegate dropTarget:targetThatWasHit.view acceptDrag:_state atPoint:p];
+
             if ([_state.source.delegate respondsToSelector:@selector(dragOperationDidComplete:)]) {
                 [_state.source.delegate dragOperationDidComplete:_state];
             }
