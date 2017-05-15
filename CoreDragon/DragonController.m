@@ -270,8 +270,8 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	state.originalPasteboardContents = state.pasteboard.items;
 	state.pasteboard.items = @[];
 	[delegate beginDragOperation:state fromPoint:[grec locationInView:state.dragView] inView:state.dragView];
-	if(state.pasteboard.items.count == 0) {
-		NSLog(@"%@: Cancelling drag operation because no item was put on pasteboard", [self class]);
+	if(state.pasteboard.items.count == 0 && state.localContext == nil) {
+		NSLog(@"%@: Cancelling drag operation because no item was put on pasteboard or into localContext", [self class]);
 		state.pasteboard.items = state.originalPasteboardContents;
 		return;
 	}
@@ -291,6 +291,9 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	// Now attach it to the new pasteboard items. can't find API to do so, so mess with the items array...
 	NSMutableArray *items = [[state.pasteboard items] mutableCopy];
 	NSMutableDictionary *firstItem = [[items firstObject] mutableCopy];
+    if (firstItem == nil) {
+        firstItem = [NSMutableDictionary new];
+    }
 	firstItem[kDragMetadataKey] = metadata;
 	items[0] = firstItem;
 	state.pasteboard.items = items;

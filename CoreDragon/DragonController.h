@@ -64,7 +64,9 @@ NS_ASSUME_NONNULL_BEGIN
          Examples to use this would be when two closely-coupled parts of your app (or a
          single part) want to do drag and drop and having the original object is important.
          For example, when reordering items in a collection view, or dropping things onto
-         a map. To pass data further away or to other apps, use the pasteboard instead.
+         a map. To pass data further away or to other apps, use the pasteboard.
+ 
+         Best practice is to fill the drag's pasteboard first, then use localContext if needed.
  */
 
 @property(nonatomic,readwrite,strong) id localContext;
