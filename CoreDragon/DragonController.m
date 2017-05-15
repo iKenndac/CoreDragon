@@ -54,7 +54,7 @@ static const void *kDropTargetKey = &kDropTargetKey;
 - (BOOL)canDrop:(id<DragonInfo>)drag;
 @end
 
-@interface DragonController () <UIGestureRecognizerDelegate, CerfingConnectionDelegate>
+@interface DragonController () <CerfingConnectionDelegate>
 {
     NSMutableSet *_dropTargets;
 	CerfingMeshPipe *_cerfing;
@@ -145,7 +145,12 @@ static const void *kDropTargetKey = &kDropTargetKey;
 - (void)dragGesture:(UIGestureRecognizer*)grec
 {
     if(grec.state == UIGestureRecognizerStateBegan) {
-        SPDragSource *initiator = [self sourceUnderLocation:[grec locationInView:grec.view]];
+        //We'd like to support dragging from views, not just windows. Convert location to window coords if need be.
+        CGPoint location = [grec locationInView:grec.view];
+        if (grec.view.window != nil) {
+            location = [grec.view.window convertPoint:location fromView:grec.view];
+        }
+        SPDragSource *initiator = [self sourceUnderLocationInWindow:location];
         [self startDraggingWithInitiator:initiator event:grec];
     } else if(grec.state == UIGestureRecognizerStateChanged) {
         [self continueDraggingFromGesture:[grec locationInView:_draggingContainer]];
@@ -688,7 +693,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
     }];
 }
 
-- (SPDragSource*)sourceUnderLocation:(CGPoint)locationInWindow
+- (SPDragSource*)sourceUnderLocationInWindow:(CGPoint)locationInWindow
 {
 	for(UIWindow *window in [UIApplication sharedApplication].windows) {
 		UIView *view = [window hitTest:locationInWindow withEvent:nil];

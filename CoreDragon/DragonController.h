@@ -4,7 +4,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /// Controller for managing drag an drop between views (possibly between applications).
-@interface DragonController : NSObject
+@interface DragonController : NSObject <UIGestureRecognizerDelegate>
 
 /*! Get the shared DragonController. Only use this singleton: don't instantiate
 	more of them. */
