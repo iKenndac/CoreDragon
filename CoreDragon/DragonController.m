@@ -261,7 +261,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	state.operationIdentifier = [[NSUUID UUID] UUIDString];
 	
 	// Setup pasteboard contents
-	state.pasteboard = [UIPasteboard pasteboardWithUniqueName];
+	state.pasteboard = [UIPasteboard generalPasteboard];
 	state.originalPasteboardContents = state.pasteboard.items;
 	state.pasteboard.items = @[];
 	[delegate beginDragOperation:state fromPoint:[grec locationInView:state.dragView] inView:state.dragView];
