@@ -60,8 +60,14 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol DragonInfo <NSObject>
 @property(nonatomic,readonly) UIPasteboard *pasteboard;
 
-/// Optional drag context. Not given to other apps — only used within the local app.
-@property(nonatomic, readwrite, weak) id localContext;
+/*! Optional drag context. Not given to other apps — only used within the local app.
+         Examples to use this would be when two closely-coupled parts of your app (or a
+         single part) want to do drag and drop and having the original object is important.
+         For example, when reordering items in a collection view, or dropping things onto
+         a map. To pass data further away or to other apps, use the pasteboard instead.
+ */
+
+@property(nonatomic,readwrite,strong) id localContext;
 
 // Can only be set during 'beingDragOperation:fromView:'
 /*! An icon to represent the data you just put in pasteboard. If not set (and no localProxyView
