@@ -4,7 +4,6 @@
 #import "DragonDropHighlightView.h"
 #import "DragonContainerWindow.h"
 #import "DragonProxyView.h"
-#import <MeshPipe/CerfingMeshPipeTransport/CerfingMeshPipe.h>
 
 @class SPDropTarget, SPDragSource;
 
@@ -54,10 +53,9 @@ static const void *kDropTargetKey = &kDropTargetKey;
 - (BOOL)canDrop:(id<DragonInfo>)drag;
 @end
 
-@interface DragonController () <CerfingConnectionDelegate>
+@interface DragonController ()
 {
     NSMutableSet *_dropTargets;
-	CerfingMeshPipe *_cerfing;
 }
 @property(nonatomic,strong) SPDraggingState *state;
 @property(nonatomic,strong) DragonContainerWindow *draggingContainer;
@@ -81,9 +79,6 @@ static const void *kDropTargetKey = &kDropTargetKey;
 	
     _dropTargets = [NSMutableSet new];
 	
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_establishMeshPipe) name:UIApplicationDidBecomeActiveNotification object:nil];
-	[self _establishMeshPipe];
-	
 	self.draggingContainer = [[DragonContainerWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
 	self.draggingContainer.hidden = NO;
 	
@@ -96,20 +91,6 @@ static const void *kDropTargetKey = &kDropTargetKey;
 	
     self.draggingContainer.hidden = YES;
     self.draggingContainer = nil;
-}
-
-#pragma mark - Network establish
-
-- (void)_establishMeshPipe
-{
-	_cerfing = nil;
-    
-	NSString *appName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"] ?:
-						[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"] ?:
-						[[NSProcessInfo processInfo] processName];
-	
-	_cerfing = [[CerfingMeshPipe alloc] initWithBasePort:23576 count:16 peerName:appName];
-	_cerfing.delegate = self;
 }
 
 #pragma mark - Gestures
@@ -231,13 +212,6 @@ static NSDictionary *serializedImage(UIImage *image)
 	};
 }
 
-static UIImage *unserializedImage(NSDictionary *rep)
-{
-	if(!rep || !rep[@"pngData"] || !rep[@"scale"])
-		return nil;
-	return [UIImage imageWithData:rep[@"pngData"] scale:[rep[@"scale"] floatValue]];
-}
-
 #pragma mark Application frame and coordinate system util
 
 - (CGPoint)convertLocalPointToScreenSpace:(CGPoint)localPoint
@@ -311,62 +285,6 @@ static UIImage *unserializedImage(NSDictionary *rep)
 	
 	// Setup UI
 	[self startDraggingWithState:state anchorPoint:anchorPoint initialPosition:initialLocation];
-	
-	// And tell other apps
-	[_cerfing broadcastDict:@{
-		kCerfingCommand: @"startDragging",
-		@"state": @{
-			@"title": state.title ?: @"",
-			@"subtitle": state.subtitle ?: @"",
-			@"pasteboardName": state.pasteboard.name,
-			@"uuid": state.operationIdentifier,
-		},
-		@"anchorPoint": NSStringFromCGPoint(anchorPoint),
-		@"initialPosition": NSStringFromCGPoint(initialScreenLocation)
-	}];
-}
-
-- (void)command:(CerfingConnection*)connection startDragging:(NSDictionary*)msg
-{
-	// Setup state that comes from Cerfing
-	NSDictionary *stateD = msg[@"state"];
-    SPDraggingState *state = [SPDraggingState new];
-
-	state.title = [stateD[@"title"] length] > 0 ? stateD[@"title"] : nil;
-	state.subtitle = [stateD[@"subtitle"] length] > 0 ? stateD[@"subtitle"] : nil;
-	state.pasteboard = [UIPasteboard pasteboardWithName:stateD[@"pasteboardName"] create:NO];
-	state.operationIdentifier = stateD[@"uuid"];
-	
-	
-	CGPoint anchorPoint = CGPointFromString(msg[@"anchorPoint"]);
-	CGPoint initialPosition = CGPointFromString(msg[@"initialPosition"]);
-	state.initialPositionInScreenSpace = initialPosition;
-	
-	CGPoint initialLocalPosition = [self convertScreenPointToLocalSpace:initialPosition];
-	
-	// Setup state that comes from Pasteboard
-	NSData *metadata = [[state.pasteboard dataForPasteboardType:kDragMetadataKey inItemSet:NULL] firstObject];
-	NSKeyedUnarchiver *unarch = [[NSKeyedUnarchiver alloc] initForReadingWithData:metadata];
-	unarch.requiresSecureCoding = YES;
-	
-	NSDictionary *meta = nil;
-	@try {
-		meta = [unarch decodeObjectOfClasses:[NSSet setWithObjects:[NSDictionary class], [NSData class], nil] forKey:NSKeyedArchiveRootObjectKey];
-	} @catch (NSException *exc) {
-		NSLog(@"Failure unarchiving auxilliary pasteboard, cancelling drag: %@", exc);
-		// Don't try to perform drag operation with someone who is sending us dangerous data.
-		return;
-	}
-	
-	if([meta[@"uuid"] isEqual:state.operationIdentifier]) {
-		state.draggingIcon = unserializedImage(meta[@"draggingIcon"]);
-		state.screenshot = unserializedImage(meta[@"screenshot"]);
-	} else {
-		NSLog(@"Warning: Missing drag'n'drop metadata over auxilliary pasteboard");
-	}
-	
-	// aaand go!
-	[self startDraggingWithState:state anchorPoint:anchorPoint initialPosition:initialLocalPosition];
 }
 
 - (NSArray<SPDropTarget *> *)_calculateActiveDropTargets
@@ -419,19 +337,7 @@ static UIImage *unserializedImage(NSDictionary *rep)
 
 - (void)continueDraggingFromGesture:(CGPoint)position
 {
-	[_cerfing broadcastDict:@{
-		kCerfingCommand: @"continueDragging",
-		@"position": NSStringFromCGPoint([self convertLocalPointToScreenSpace:position]),
-	}];
 	[self _continueDragging:position];
-}
-
-- (void)command:(CerfingConnection*)connection continueDragging:(NSDictionary*)msg
-{
-	CGPoint position = CGPointFromString(msg[@"position"]);
-	CGPoint localPosition = [self convertScreenPointToLocalSpace:position];
-	
-	[self _continueDragging:localPosition];
 }
 
 - (void)_continueDragging:(CGPoint)position
@@ -467,15 +373,9 @@ static UIImage *unserializedImage(NSDictionary *rep)
 // Finger has been lifted, conclude the dragging operation!
 - (void)concludeDraggingFromGesture
 {
-	[_cerfing broadcastDict:@{
-		kCerfingCommand: @"concludeDragging",
-	}];
 	[self _concludeDragging];
 }
-- (void)command:(CerfingConnection*)conn concludeDragging:(NSDictionary*)dict
-{
-	[self _concludeDragging];
-}
+
 // This will either end up calling 'cancelDragging' or 'cleanUpDragging'
 - (void)_concludeDragging
 {
@@ -524,13 +424,6 @@ static UIImage *unserializedImage(NSDictionary *rep)
 
 // Animate indicating that the drag failed, across all apps.
 - (void)cancelDragging
-{
-	[_cerfing broadcastDict:@{
-		kCerfingCommand: @"cancelDragging",
-	}];
-	[self _cancelDragging];
-}
-- (void)command:(CerfingConnection*)connection cancelDragging:(NSDictionary*)dict
 {
 	[self _cancelDragging];
 }
@@ -582,14 +475,6 @@ static UIImage *unserializedImage(NSDictionary *rep)
 - (void)cleanUpDragging
 {
 	DNDLog(@"Asking everybody to clean up dragging");
-	[_cerfing broadcastDict:@{
-		kCerfingCommand: @"completeDragging",
-	}];
-	[self _cleanUpDragging];
-}
-
-- (void)command:(CerfingConnection*)connection completeDragging:(NSDictionary*)dict
-{
 	[self _cleanUpDragging];
 }
 
