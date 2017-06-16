@@ -19,9 +19,32 @@
     self.opaque = NO;
 	self.windowLevel = UIWindowLevelStatusBar;
 	
-	self.rootViewController = [UIViewController new];
-	self.rootViewController.view.backgroundColor = [UIColor clearColor];//[UIColor colorWithHue:0.4 saturation:1 brightness:1 alpha:0.2];
+    self.rootViewController = [DragonContainerViewController new];
+    self.rootViewController.view.backgroundColor = [UIColor clearColor];//[UIColor colorWithHue:0.4 saturation:1 brightness:1 alpha:0.2];
 
     return self;
 }
+
+-(void)setStatusBarStyle:(UIStatusBarStyle)style {
+    DragonContainerViewController *root = (DragonContainerViewController *)self.rootViewController;
+    [root setStatusBarStyle:style];
+}
+
+@end
+
+@interface DragonContainerViewController()
+@property (nonatomic) UIStatusBarStyle style;
+@end
+
+@implementation DragonContainerViewController
+
+-(void)setStatusBarStyle:(UIStatusBarStyle)style {
+    self.style = style;
+    [self setNeedsStatusBarAppearanceUpdate];
+}
+
+-(UIStatusBarStyle)preferredStatusBarStyle {
+    return self.style;
+}
+
 @end

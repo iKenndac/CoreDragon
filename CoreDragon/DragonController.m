@@ -58,7 +58,7 @@ static const void *kDropTargetKey = &kDropTargetKey;
     NSMutableSet *_dropTargets;
 }
 @property(nonatomic,strong) SPDraggingState *state;
-@property(nonatomic,strong) DragonContainerWindow *draggingContainer;
+@property(nonatomic,strong,readwrite) UIWindow *draggingContainer;
 @end
 
 @implementation DragonController
@@ -80,7 +80,7 @@ static const void *kDropTargetKey = &kDropTargetKey;
     _dropTargets = [NSMutableSet new];
 	
 	self.draggingContainer = [[DragonContainerWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-	self.draggingContainer.hidden = NO;
+	self.draggingContainer.hidden = YES;
 	
     return self;
 }
@@ -91,6 +91,13 @@ static const void *kDropTargetKey = &kDropTargetKey;
 	
     self.draggingContainer.hidden = YES;
     self.draggingContainer = nil;
+}
+
+#pragma mark - App Friendliness
+
+-(void)dragContainerShouldUseStatusBarStyle:(UIStatusBarStyle)style {
+    DragonContainerWindow *container = (DragonContainerWindow *)self.draggingContainer;
+    [container setStatusBarStyle:style];
 }
 
 #pragma mark - Gestures
@@ -313,7 +320,8 @@ static NSDictionary *serializedImage(UIImage *image)
 
     [state.localProxyView prepareForDragOperation:state];
 
-    [_draggingContainer addSubview:state.localProxyView];
+    self.draggingContainer.hidden = NO;
+    [self.draggingContainer addSubview:state.localProxyView];
 
     if(!hasCustomDraggingView && !state.draggingIcon) { // it's just a screenshot, position it correctly
         state.localProxyView.layer.anchorPoint = anchorPoint;
@@ -487,6 +495,7 @@ static NSDictionary *serializedImage(UIImage *image)
 	
     [_state.springloadingTimer invalidate];
     [_state.localProxyView removeFromSuperview];
+    self.draggingContainer.hidden = YES;
     [self stopHighlightingDropTargets];
 	
 	if(self.state.originalPasteboardContents)

@@ -10,4 +10,9 @@
 
 @interface DragonContainerWindow : UIWindow
 - (instancetype)initWithFrame:(CGRect)frame;
+- (void)setStatusBarStyle:(UIStatusBarStyle)style;
+@end
+
+@interface DragonContainerViewController: UIViewController
+- (void)setStatusBarStyle:(UIStatusBarStyle)style;
 @end

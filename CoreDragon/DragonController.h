@@ -10,6 +10,12 @@ NS_ASSUME_NONNULL_BEGIN
 	more of them. */
 + (instancetype)sharedController;
 
+/*! Returns the container window for drags. You shouldn't normally need to interact with this. */
+@property(nonatomic,strong,readonly) UIWindow *draggingContainer;
+
+/*! Let the drag system know which status bar style you're currently using. */
+-(void)dragContainerShouldUseStatusBarStyle:(UIStatusBarStyle)style;
+
 #pragma mark Gesture handling
 
 /*! To enable drag'n'drop within your application, some gesture must be used to start
